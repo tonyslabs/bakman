@@ -1,0 +1,55 @@
+services:
+  backend-manager:
+    build: .
+    container_name: backend-manager
+    restart: unless-stopped
+    # Ver stopwaitsecs del queue en docker/supervisord.conf: al parar se espera al job en curso.
+    stop_grace_period: 11m
+    ports:
+      - "100.76.255.29:8091:8080"
+    volumes:
+      - /data/backups:/data/backups
+      - /data/logs:/data/logs
+      - /data:/mnt/pi:ro
+      - backend_manager_ssh:/data/ssh
+      - backend_manager_storage:/var/www/html/storage
+    environment:
+      TZ: America/Managua
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: http://100.76.255.29:8091
+      APP_NAME: "Backend Manager"
+      APP_LOCALE: es
+      # artisan serve atiende una petición a la vez: con 1 worker las tarjetas de Lab se
+      # comprobaban en serie y el chequeo de bakman a sí mismo se bloqueaba.
+      PHP_CLI_SERVER_WORKERS: 4
+      # Token de API de Portainer (Lab → Homelab descubre los servicios con él). Va en .env.
+      PORTAINER_TOKEN: ${PORTAINER_TOKEN:-}
+      APP_KEY: ${BACKEND_MANAGER_APP_KEY}
+      DB_CONNECTION: mysql
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_DATABASE: backend_manager
+      DB_USERNAME: root
+      DB_PASSWORD: ${BACKEND_MANAGER_DB_PASSWORD}
+      QUEUE_CONNECTION: database
+      ADMIN_EMAIL: ${BACKEND_MANAGER_ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${BACKEND_MANAGER_ADMIN_PASSWORD}
+      SSH_KEY_PATH: /data/ssh/id_ed25519
+      BACKUPS_PATH: /data/backups
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - core
+
+volumes:
+  backend_manager_ssh:
+    external: true
+  backend_manager_storage:
+
+networks:
+  core:
+    external: true
