@@ -31,6 +31,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('database-connections', DatabaseConnectionController::class)->except(['show']);
     Route::post('database-connections/test', [DatabaseConnectionController::class, 'test'])->name('database-connections.test');
     Route::get('database-connections/{database_connection}/databases', [DatabaseConnectionController::class, 'databases'])->name('database-connections.databases');
+    Route::post('database-connections/{database_connection}/env', [DatabaseConnectionController::class, 'env'])->name('database-connections.env');
 
     Route::get('database-migrations', [DatabaseMigrationController::class, 'index'])->name('database-migrations.index');
     Route::get('database-migrations/create', [DatabaseMigrationController::class, 'create'])->name('database-migrations.create');

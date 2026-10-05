@@ -92,6 +92,15 @@ class DatabaseConnectionController extends Controller
         }
     }
 
+    public function env(Request $request, DatabaseConnection $databaseConnection)
+    {
+        $data = $request->validate([
+            'framework' => ['required', 'in:'.implode(',', array_keys(DatabaseConnection::ENV_FRAMEWORKS))],
+        ]);
+
+        return response()->json(['text' => $databaseConnection->envSnippet($data['framework'])]);
+    }
+
     private function validated(Request $request, ?int $ignoreId = null): array
     {
         $validated = $request->validate([
