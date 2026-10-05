@@ -99,4 +99,35 @@ class DatabaseConnectionTest extends TestCase
 
         $response->assertStatus(422)->assertJson(['success' => false]);
     }
+
+    public function test_env_endpoint_returns_laravel_and_fastapi_blocks(): void
+    {
+        $user = User::factory()->create();
+        $connection = DatabaseConnection::create([
+            'name' => 'env-test',
+            'host' => '100.84.80.22',
+            'port' => 4226,
+            'username' => 'root',
+            'password' => 'p@ss #1',
+        ]);
+
+        $laravel = $this->actingAs($user)->postJson(route('database-connections.env', $connection), ['framework' => 'laravel']);
+        $laravel->assertOk();
+        $this->assertSame(implode("\n", [
+            'DB_CONNECTION=mysql',
+            'DB_HOST=100.84.80.22',
+            'DB_PORT=4226',
+            'DB_DATABASE=',
+            'DB_USERNAME=root',
+            "DB_PASSWORD='p@ss #1'",
+        ]), $laravel->json('text'));
+
+        $fastapi = $this->actingAs($user)->postJson(route('database-connections.env', $connection), ['framework' => 'fastapi']);
+        $fastapi->assertOk();
+        $this->assertStringContainsString("DB_PASSWORD='p@ss #1'", $fastapi->json('text'));
+        $this->assertStringContainsString('DATABASE_URL=mysql+pymysql://root:p%40ss%20%231@100.84.80.22:4226/', $fastapi->json('text'));
+
+        $this->actingAs($user)->postJson(route('database-connections.env', $connection), ['framework' => 'django'])
+            ->assertStatus(422);
+    }
 }
