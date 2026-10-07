@@ -12,6 +12,7 @@ use App\Http\Controllers\LabController;
 use App\Http\Controllers\MonitorController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TargetController;
 use Illuminate\Support\Facades\Route;
 
@@ -53,6 +54,17 @@ Route::middleware('auth')->group(function () {
     Route::get('lab-projects/{lab_project}/ping', [LabController::class, 'ping'])->name('lab.projects.ping');
     Route::post('lab-projects/{lab_project}/toggle-hidden', [LabController::class, 'toggleHidden'])->name('lab.projects.toggle-hidden');
     Route::post('lab/homelab/discover', [LabController::class, 'discover'])->name('lab.discover');
+
+    Route::post('tareas', [TaskController::class, 'store'])->name('tasks.store');
+    Route::post('tareas/reordenar', [TaskController::class, 'reordenar'])->name('tasks.reordenar');
+    Route::get('tareas/{task}/editar', [TaskController::class, 'edit'])->name('tasks.edit');
+    Route::put('tareas/{task}', [TaskController::class, 'update'])->name('tasks.update');
+    Route::patch('tareas/{task}/estado', [TaskController::class, 'estado'])->name('tasks.estado');
+    Route::patch('tareas/{task}/fecha', [TaskController::class, 'fecha'])->name('tasks.fecha');
+    Route::patch('tareas/{task}/subtareas/{indice}', [TaskController::class, 'subtarea'])->whereNumber('indice')->name('tasks.subtarea');
+    Route::delete('tareas/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
+    Route::get('tareas/{vista?}', [TaskController::class, 'index'])
+        ->whereIn('vista', array_keys(TaskController::VISTAS))->name('tasks.index');
 
     Route::get('files', [FileBrowserController::class, 'index'])->name('files.index');
     Route::get('files/download', [FileBrowserController::class, 'download'])->name('files.download');

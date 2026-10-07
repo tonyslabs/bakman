@@ -13,6 +13,8 @@ services:
       - /data:/mnt/pi:ro
       - backend_manager_ssh:/data/ssh
       - backend_manager_storage:/var/www/html/storage
+      # Vault de Obsidian (Syncthing laptop ↔ homelab). Tareas → TASKS_PATH (config/tasks.php).
+      - /home/darius/obsidian-vault:/data/vault
     environment:
       TZ: America/Managua
       APP_ENV: production

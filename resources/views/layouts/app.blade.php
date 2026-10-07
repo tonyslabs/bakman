@@ -57,6 +57,27 @@
                         {{ __('Dashboard') }}
                     </x-sidebar-link>
 
+                    <x-sidebar-group label="Tareas" :open="request()->routeIs('tasks.*')">
+                        <x-sidebar-link :href="route('tasks.index')" :active="request()->routeIs('tasks.*') && in_array(request()->route('vista'), [null, 'tablero'], true) && ! request('seccion')">
+                            {{ __('Tablero') }}
+                        </x-sidebar-link>
+                        <x-sidebar-link :href="route('tasks.index', 'lista')" :active="request()->route('vista') === 'lista' && ! request('seccion')">
+                            {{ __('Lista') }}
+                        </x-sidebar-link>
+                        <x-sidebar-link :href="route('tasks.index', 'agenda')" :active="request()->route('vista') === 'agenda'">
+                            {{ __('Agenda') }}
+                        </x-sidebar-link>
+                        <x-sidebar-link :href="route('tasks.index', ['vista' => 'tablero', 'seccion' => 'trabajo'])" :active="request()->routeIs('tasks.*') && request('seccion') === 'trabajo'">
+                            {{ __('Trabajo') }}
+                        </x-sidebar-link>
+                        <x-sidebar-link :href="route('tasks.index', ['vista' => 'tablero', 'seccion' => 'personal'])" :active="request()->routeIs('tasks.*') && request('seccion') === 'personal'">
+                            {{ __('Personal') }}
+                        </x-sidebar-link>
+                        <x-sidebar-link :href="route('tasks.index', 'inbox')" :active="request()->route('vista') === 'inbox'">
+                            {{ __('Inbox') }}
+                        </x-sidebar-link>
+                    </x-sidebar-group>
+
                     <x-sidebar-group label="Database" :open="request()->routeIs('database-connections.*') || request()->routeIs('database-migrations.*') || request()->routeIs('database-diff.*') || request()->routeIs('database-diff-syncs.*')">
                         <x-sidebar-link :href="route('database-connections.index')" :active="request()->routeIs('database-connections.*')">
                             {{ __('Conexiones') }}
