@@ -109,7 +109,7 @@ class NotifyTest extends TestCase
         $alerts->succeeded($job, $run('success'));
 
         $titles = array_column($this->sent(), 'title');
-        $this->assertSame(['✕ Falló betel-sync', '✕ betel-sync sigue fallando (3 seguidas)', '✓ betel-sync volvió a funcionar'], $titles);
+        $this->assertSame(['Falló betel-sync', 'betel-sync sigue fallando (3 seguidas)', 'betel-sync volvió a funcionar'], $titles);
         $this->assertSame('bakman-jobs', $this->sent()[0]['topic']);
         $this->assertSame('SKU duplicado', $this->sent()[0]['message']);
     }
@@ -122,7 +122,7 @@ class NotifyTest extends TestCase
 
         (new RunBackupJob($job))->handle($service);
 
-        $this->assertSame('✕ Falló dvprod', $this->sent()[0]['title']);
+        $this->assertSame('Falló dvprod', $this->sent()[0]['title']);
         $this->assertSame('mysqldump: acceso denegado', $this->sent()[0]['message']);
     }
 
@@ -136,7 +136,7 @@ class NotifyTest extends TestCase
         app(JobAlerts::class)->watch();
 
         $this->assertCount($count, $this->sent(), 'no repite el mismo aviso');
-        $this->assertContains('⏸ lento parece colgado', array_column($this->sent(), 'title'));
+        $this->assertContains('lento parece colgado', array_column($this->sent(), 'title'));
     }
 
     public function test_commands(): void
