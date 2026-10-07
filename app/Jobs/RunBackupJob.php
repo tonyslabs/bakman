@@ -6,6 +6,7 @@ use App\Exceptions\ScriptFailedException;
 use App\Models\BackupJob;
 use App\Models\BackupJobRun;
 use App\Services\BackupService;
+use App\Services\Notify\JobAlerts;
 use Throwable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -51,6 +52,8 @@ class RunBackupJob implements ShouldQueue
             $this->backupJob->update(['last_run_at' => now()]);
 
             $service->applyRetention($this->backupJob);
+
+            app(JobAlerts::class)->succeeded($this->backupJob, $run);
         } catch (\Throwable $e) {
             $log = $e instanceof ScriptFailedException && file_exists($e->logPath) ? $e->logPath : null;
 
@@ -68,6 +71,8 @@ class RunBackupJob implements ShouldQueue
             }
 
             $this->backupJob->update(['last_run_at' => now()]);
+
+            app(JobAlerts::class)->failed($this->backupJob, $run);
         }
     }
 
@@ -77,6 +82,8 @@ class RunBackupJob implements ShouldQueue
      */
     public function failed(?Throwable $e): void
     {
+        $interrupted = BackupJobRun::where('backup_job_id', $this->backupJob->id)->where('status', 'running')->latest('id')->first();
+
         BackupJobRun::where('backup_job_id', $this->backupJob->id)
             ->where('status', 'running')
             ->update([
@@ -84,5 +91,9 @@ class RunBackupJob implements ShouldQueue
                 'finished_at' => now(),
                 'error_message' => 'Interrumpido: el worker de bakman se detuvo durante la ejecución'.($e ? ' ('.class_basename($e).')' : '').'.',
             ]);
+
+        if ($interrupted) {
+            app(JobAlerts::class)->failed($this->backupJob, $interrupted->fresh());
+        }
     }
 }

@@ -2,6 +2,9 @@
 
 use App\Jobs\RunBackupJob;
 use App\Models\BackupJob;
+use App\Services\Notify\JobAlerts;
+use App\Services\Notify\Notifier;
+use App\Services\Notify\TaskDigest;
 use App\Services\ServiceDiscovery;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -40,3 +43,30 @@ Schedule::call(function () {
         $discovery->sync();
     }
 })->everyFiveMinutes()->name('lab-discovery')->withoutOverlapping();
+
+// Avisos por ntfy (config/notify.php). Tareas: resumen de la mañana y recordatorio de la tarde.
+Artisan::command('tareas:avisar {tipo=manana : manana|tarde} {--forzar : enviar aunque ya se haya avisado hoy}', function (TaskDigest $digest) {
+    $tipo = $this->argument('tipo');
+    if (! in_array($tipo, ['manana', 'tarde'], true)) {
+        return $this->error('Tipo inválido: manana o tarde.');
+    }
+    $sent = $digest->send($tipo, (bool) $this->option('forzar'));
+    $this->line($sent ?? 'Nada que avisar (o ya se avisó hoy).');
+})->purpose('Aviso de tareas vencidas / para hoy por ntfy');
+
+Artisan::command('jobs:vigilar', function (JobAlerts $alerts) {
+    $this->line($alerts->watch().' avisos enviados');
+})->purpose('Avisa por ntfy de jobs atrasados o colgados');
+
+Artisan::command('avisos:probar {topic=tareas : tareas|jobs}', function (Notifier $notifier) {
+    if (! $notifier->enabled()) {
+        return $this->error('ntfy no está configurado (NTFY_URL / NTFY_TOKEN).');
+    }
+    $ok = $notifier->send($this->argument('topic'), 'Prueba de bakman', 'Si ves esto, los avisos funcionan 👍', ['tags' => ['tada'], 'click' => Notifier::link('tareas')]);
+    $ok ? $this->info('Enviado.') : $this->error('No se pudo enviar (ver log).');
+})->purpose('Manda un aviso de prueba por ntfy');
+
+Schedule::command('tareas:avisar manana')->dailyAt(config('notify.tareas.manana'))->timezone(config('backups.timezone'))->name('avisos-tareas-manana');
+Schedule::command('tareas:avisar tarde')->dailyAt(config('notify.tareas.tarde'))->timezone(config('backups.timezone'))->name('avisos-tareas-tarde');
+Schedule::command('jobs:vigilar')->everyFiveMinutes()->name('avisos-jobs')->withoutOverlapping();
+

@@ -34,7 +34,21 @@ services:
       DB_DATABASE: backend_manager
       DB_USERNAME: root
       DB_PASSWORD: ${BACKEND_MANAGER_DB_PASSWORD}
-      QUEUE_CONNECTION: database
+      # Cola, cache y locks del scheduler en el Redis compartido (red `core`), con usuario propio
+      # que solo ve claves bakman:* (ACL en ~/docker/databases/redis/users.acl).
+      QUEUE_CONNECTION: redis
+      CACHE_STORE: redis
+      REDIS_CLIENT: predis
+      REDIS_HOST: redis_service
+      REDIS_USERNAME: bakman
+      REDIS_PASSWORD: ${BAKMAN_REDIS_PASSWORD}
+      REDIS_PREFIX: "bakman:"
+      # > timeout del job (3700 s): que un backup largo no se reencole mientras corre.
+      REDIS_QUEUE_RETRY_AFTER: 3900
+      # Avisos por ntfy (~/docker/apps/ntfy). Token del usuario `bakman` (solo publica en bakman-*).
+      NTFY_URL: ${NTFY_URL:-}
+      NTFY_TOKEN: ${NTFY_TOKEN:-}
+      NTFY_PUBLIC_URL: ${NTFY_PUBLIC_URL:-http://100.76.255.29:8093}
       ADMIN_EMAIL: ${BACKEND_MANAGER_ADMIN_EMAIL}
       ADMIN_PASSWORD: ${BACKEND_MANAGER_ADMIN_PASSWORD}
       SSH_KEY_PATH: /data/ssh/id_ed25519
