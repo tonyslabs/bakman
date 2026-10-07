@@ -159,7 +159,7 @@
                 </form>
 
                 <form method="POST" action="{{ route('tasks.destroy', $task['id']) }}" class="mt-6 border-t border-zinc-800 pt-4"
-                      onsubmit="return confirm('¿Borrar la nota de la tarea? (queda 30 días en .stversions del homelab)')">
+                      onsubmit="return confirm('¿Borrar la nota de la tarea? (Syncthing guarda una copia 30 días en .stversions)')">
                     @csrf
                     @method('DELETE')
                     <input type="hidden" name="volver" value="{{ $volver }}">

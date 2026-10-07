@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 /**
  * Avisos de jobs: falla (la primera y luego cada N seguidas, no una por corrida), vuelta a la
  * normalidad, atrasado y colgado. El estado "está fallando" vive en la cache (Redis).
+ * Títulos sin emoji propio: ntfy antepone el de la etiqueta (🚨 ✅ ⚠️ ⌛).
  */
 class JobAlerts
 {
@@ -30,7 +31,7 @@ class JobAlerts
         }
 
         $this->notifier->send('jobs',
-            $count === 1 ? "✕ Falló {$job->name}" : "✕ {$job->name} sigue fallando ({$count} seguidas)",
+            $count === 1 ? "Falló {$job->name}" : "{$job->name} sigue fallando ({$count} seguidas)",
             Str::limit($run->error_message ?: 'Sin mensaje de error.', 300),
             [
                 'priority' => 4,
@@ -48,7 +49,7 @@ class JobAlerts
             return;
         }
 
-        $this->notifier->send('jobs', "✓ {$job->name} volvió a funcionar",
+        $this->notifier->send('jobs', "{$job->name} volvió a funcionar",
             'Después de '.$count.' '.($count === 1 ? 'falla' : 'fallas seguidas').'. Última corrida OK en '.($run->duration_seconds ?? 0).' s.',
             ['priority' => 3, 'tags' => ['white_check_mark'], 'click' => Notifier::link("backup-jobs/{$job->id}/runs")],
         );
@@ -65,7 +66,7 @@ class JobAlerts
             if ($last && $this->schedule->isStuck($job, $last)
                 && Cache::add("avisos:jobs:{$job->id}:colgado:{$last->id}", true, now()->addDays(7))) {
                 $sent++;
-                $this->notifier->send('jobs', "⏸ {$job->name} parece colgado",
+                $this->notifier->send('jobs', "{$job->name} parece colgado",
                     'Corriendo desde '.$last->started_at->timezone(config('backups.timezone'))->format('d/m H:i').' (más que su timeout).',
                     ['priority' => 4, 'tags' => ['warning'], 'click' => Notifier::link('monitor')],
                 );
@@ -76,7 +77,7 @@ class JobAlerts
                 $marca = $last?->id ?? 'nunca';
                 if (Cache::add("avisos:jobs:{$job->id}:atrasado:{$marca}", true, now()->addDays(7))) {
                     $sent++;
-                    $this->notifier->send('jobs', "⌛ {$job->name} está atrasado",
+                    $this->notifier->send('jobs', "{$job->name} está atrasado",
                         'No corrió cuando le tocaba'.($last ? ' (última: '.$last->started_at?->timezone(config('backups.timezone'))->format('d/m H:i').').' : '.'),
                         ['priority' => 4, 'tags' => ['hourglass'], 'click' => Notifier::link('monitor')],
                     );
