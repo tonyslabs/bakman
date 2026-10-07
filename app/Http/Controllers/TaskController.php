@@ -36,6 +36,12 @@ class TaskController extends Controller
 
     public function index(Request $request, string $vista = 'tablero')
     {
+        return view('tasks.index', $this->listing($request, $vista));
+    }
+
+    /** Datos de una vista (web y API v1): tareas filtradas, agenda y contadores. */
+    protected function listing(Request $request, string $vista): array
+    {
         abort_unless(array_key_exists($vista, self::VISTAS), 404);
 
         $all = $this->tasks->all();
@@ -61,7 +67,7 @@ class TaskController extends Controller
             default => $activas,
         };
 
-        return view('tasks.index', [
+        return [
             'vista' => $vista,
             'tasks' => $tasks->values(),
             'agenda' => $vista === 'agenda' ? $this->agenda($tasks, $hoy) : null,
@@ -79,7 +85,7 @@ class TaskController extends Controller
                 'pospuestas' => $scoped->where('pospuesta', true)->count(),
                 'secciones' => collect(Sections::labels())->map(fn ($l, $s) => $all->where('seccion', $s)->where('cerrada', false)->count()),
             ],
-        ]);
+        ];
     }
 
     public function store(Request $request)
@@ -122,7 +128,8 @@ class TaskController extends Controller
     public function update(Request $request, string $task)
     {
         $current = $this->tasks->findOrFail($task);
-        $request->merge(['repite' => $this->ruleFromForm($request)]);
+        // El formulario web arma la regla con repite_tipo/días/…; la API la manda ya hecha en `repite`.
+        $request->merge(['repite' => $request->has('repite_tipo') ? $this->ruleFromForm($request) : $request->input('repite')]);
         $data = $this->validated($request);
 
         $changes = collect($data)->only(['estado', 'prioridad', 'area', 'proyecto', 'vence', 'inicio', 'repite', 'repite_desde', 'repite_hasta'])
@@ -148,11 +155,14 @@ class TaskController extends Controller
                 titulo: $data['titulo'],
             );
         } catch (TaskConflictException $e) {
-            return back()->withInput()->withErrors(['cuerpo' => $e->getMessage()]);
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage(), 'errors' => ['cuerpo' => [$e->getMessage()]]], 409)
+                : back()->withInput()->withErrors(['cuerpo' => $e->getMessage()]);
         }
 
-        return redirect()->route('tasks.index', $request->input('volver', 'tablero'))
-            ->with('status', $this->statusMessage($updated));
+        return $request->expectsJson()
+            ? response()->json(['data' => $updated, 'mensaje' => $this->statusMessage($updated)])
+            : redirect()->route('tasks.index', $request->input('volver', 'tablero'))->with('status', $this->statusMessage($updated));
     }
 
     /** Checkbox, menú de estado y atajos de teclado: cambia solo `estado` (y `orden`). */
@@ -228,11 +238,15 @@ class TaskController extends Controller
         $found = $this->tasks->findOrFail($task);
         $this->tasks->delete($task);
 
+        if ($request->expectsJson()) {
+            return response()->noContent();
+        }
+
         return redirect()->route('tasks.index', $request->input('volver', 'tablero'))
             ->with('status', "Tarea borrada: {$found['titulo']}");
     }
 
-    private function statusMessage(array $task): string
+    protected function statusMessage(array $task): string
     {
         if ($task['recurrio'] ?? null) {
             return "↻ «{$task['titulo']}» hecha ({$task['veces']}ª vez). Próxima: ".Carbon::parse($task['recurrio'])->isoFormat('ddd D MMM');
