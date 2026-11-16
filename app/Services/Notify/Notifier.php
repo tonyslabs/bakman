@@ -18,7 +18,7 @@ class Notifier
     }
 
     /**
-     * @param  string  $topic  clave de config('notify.topics') (tareas, jobs) o nombre de topic
+     * @param  string  $topic  clave de config('notify.topics') (jobs) o nombre de topic
      * @param  array{priority?: int, tags?: list<string>, click?: string, actions?: list<array>}  $options
      */
     public function send(string $topic, string $title, string $message, array $options = []): bool
