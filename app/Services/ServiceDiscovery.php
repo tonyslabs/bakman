@@ -120,7 +120,7 @@ class ServiceDiscovery
     {
         $host = parse_url($endpoint['URL'] ?? '', PHP_URL_HOST);
 
-        return $host && ! str_starts_with($endpoint['URL'], 'unix://') ? $host : config('lab.local_host');
+        return $host && ! str_starts_with($endpoint['URL'], 'unix://') ? $host : (config('lab.local_host') ?: (string) parse_url(config('lab.portainer.url'), PHP_URL_HOST));
     }
 
     /**

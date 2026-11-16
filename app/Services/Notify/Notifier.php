@@ -56,10 +56,10 @@ class Notifier
         }
     }
 
-    /** Link a una ruta de bakman con la URL de la tailnet (el teléfono no ve la red `core`). */
+    /** Link a una ruta de bakman con la URL pública de bakman (el teléfono no ve la red interna de Docker). */
     public static function link(string $path): string
     {
-        return rtrim(config('notify.app_url'), '/').'/'.ltrim($path, '/');
+        return rtrim((string) config('notify.app_url'), '/').'/'.ltrim($path, '/');
     }
 
     /** Acción "view" de ntfy (botón en la notificación). */

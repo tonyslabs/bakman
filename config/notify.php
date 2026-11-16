@@ -1,12 +1,12 @@
 <?php
 
 return [
-    // ntfy propio en el homelab (~/docker/apps/ntfy). Desde el contenedor se publica por la red
-    // `core`; los links de las notificaciones usan las URLs de la tailnet (las abre el teléfono).
+    // Servidor ntfy (url y token se editan en Ajustes). Desde el contenedor se publica por la red
+    // interna; los links de las notificaciones usan la URL pública de bakman (la abre el teléfono).
     'ntfy' => [
         'url' => env('NTFY_URL'),
         'token' => env('NTFY_TOKEN'),
-        'public_url' => env('NTFY_PUBLIC_URL', 'http://192.168.1.10:8093'),
+        'public_url' => env('NTFY_PUBLIC_URL'),
         'timeout' => 5,
     ],
 
@@ -16,7 +16,7 @@ return [
     ],
 
     // URL de bakman para los links "Abrir…" de cada aviso.
-    'app_url' => env('NOTIFY_APP_URL', env('APP_URL', 'http://192.168.1.10:8091')),
+    'app_url' => env('NOTIFY_APP_URL', env('APP_URL')),
 
     'jobs' => [
         // Tras la primera falla se avisa de nuevo cada N fallas seguidas (no una por corrida).

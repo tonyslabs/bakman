@@ -16,7 +16,8 @@ class ServiceDiscoveryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['lab.portainer.url' => 'http://portainer.test', 'lab.portainer.token' => 'ptr_x', 'lab.local_host' => '192.168.1.10']);
+        config(['lab.portainer.url' => 'http://portainer.test', 'lab.portainer.token' => 'ptr_x', 'lab.local_host' => '192.168.1.10',
+            'lab.sections_by_host' => ['192.168.1.10' => 'Homelab', '192.168.1.11' => 'Raspberry Pi']]);
     }
 
     private function fakePortainer(array $homelabContainers, array $piContainers = [], int $piStatus = 1): void

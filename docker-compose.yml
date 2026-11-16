@@ -10,7 +10,8 @@ services:
     volumes:
       - /data/backups:/data/backups
       - /data/logs:/data/logs
-      - /data:/mnt/pi:ro
+      # Discos que se exploran en Almacenamiento (solo lectura). Se registran en la web con el botón +.
+      - /data:/mnt/external:ro
       - backend_manager_ssh:/data/ssh
       - backend_manager_storage:/var/www/html/storage
     environment:

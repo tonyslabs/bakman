@@ -18,7 +18,8 @@ class DashboardMonitorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['backups.browse_root' => sys_get_temp_dir(), 'backups.path' => '/nonexistent', 'backups.logs_path' => '/nonexistent']);
+        \App\Models\StorageDisk::query()->update(['path' => sys_get_temp_dir()]);
+        config(['backups.path' => '/nonexistent', 'backups.logs_path' => '/nonexistent']);
     }
 
     private function dbJob(array $attrs = []): BackupJob

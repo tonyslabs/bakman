@@ -12,6 +12,7 @@ use App\Http\Controllers\LabController;
 use App\Http\Controllers\MonitorController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\StorageDiskController;
 use App\Http\Controllers\TargetController;
 use Illuminate\Support\Facades\Route;
 
@@ -56,9 +57,13 @@ Route::middleware('auth')->group(function () {
 
 
     Route::get('files', [FileBrowserController::class, 'index'])->name('files.index');
-    Route::get('files/download', [FileBrowserController::class, 'download'])->name('files.download');
+    Route::get('files/{disk}', [FileBrowserController::class, 'show'])->name('files.show');
+    Route::get('files/{disk}/download', [FileBrowserController::class, 'download'])->name('files.download');
+    Route::resource('storage-disks', StorageDiskController::class)->only(['create', 'store', 'edit', 'update', 'destroy'])->parameters(['storage-disks' => 'disk']);
 
     Route::get('settings/ssh-key', [SettingsController::class, 'sshKey'])->name('settings.ssh-key');
+    Route::get('ajustes', [SettingsController::class, 'edit'])->name('settings.edit');
+    Route::put('ajustes', [SettingsController::class, 'update'])->name('settings.update');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

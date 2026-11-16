@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\StorageDisk;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
@@ -12,6 +13,8 @@ class FileBrowserTest extends TestCase
     use RefreshDatabase;
 
     private string $root;
+
+    private StorageDisk $disk;
 
     protected function setUp(): void
     {
@@ -24,7 +27,8 @@ class FileBrowserTest extends TestCase
         file_put_contents(dirname($this->root).'/fuera-'.basename($this->root).'.txt', 'secreto');
         symlink(dirname($this->root), $this->root.'/escape');
 
-        config(['backups.browse_root' => $this->root]);
+        $this->disk = StorageDisk::query()->firstOrFail();
+        $this->disk->update(['path' => $this->root]);
     }
 
     protected function tearDown(): void
@@ -39,12 +43,13 @@ class FileBrowserTest extends TestCase
     public function test_guest_is_redirected_to_login(): void
     {
         $this->get(route('files.index'))->assertRedirect(route('login'));
+        $this->get(route('files.show', $this->disk))->assertRedirect(route('login'));
     }
 
     public function test_lists_directories_first_and_files(): void
     {
         $this->actingAs(User::factory()->create())
-            ->get(route('files.index'))
+            ->get(route('files.show', $this->disk))
             ->assertOk()
             ->assertSeeInOrder(['backups/', 'README.txt']);
     }
@@ -52,7 +57,7 @@ class FileBrowserTest extends TestCase
     public function test_navigates_into_nested_directory(): void
     {
         $this->actingAs(User::factory()->create())
-            ->get(route('files.index', ['path' => 'backups/vps/dvprod']))
+            ->get(route('files.show', ['disk' => $this->disk, 'path' => 'backups/vps/dvprod']))
             ->assertOk()
             ->assertSee('dvprod_2026-09-26_210000.sql.gz');
     }
@@ -60,7 +65,7 @@ class FileBrowserTest extends TestCase
     public function test_downloads_file(): void
     {
         $this->actingAs(User::factory()->create())
-            ->get(route('files.download', ['path' => 'README.txt']))
+            ->get(route('files.download', ['disk' => $this->disk, 'path' => 'README.txt']))
             ->assertOk()
             ->assertDownload('README.txt');
     }
@@ -70,8 +75,30 @@ class FileBrowserTest extends TestCase
         $user = User::factory()->create();
         $outside = '../fuera-'.basename($this->root).'.txt';
 
-        $this->actingAs($user)->get(route('files.index', ['path' => '..']))->assertNotFound();
-        $this->actingAs($user)->get(route('files.download', ['path' => $outside]))->assertNotFound();
-        $this->actingAs($user)->get(route('files.download', ['path' => 'escape/fuera-'.basename($this->root).'.txt']))->assertNotFound();
+        $this->actingAs($user)->get(route('files.show', ['disk' => $this->disk, 'path' => '..']))->assertNotFound();
+        $this->actingAs($user)->get(route('files.download', ['disk' => $this->disk, 'path' => $outside]))->assertNotFound();
+        $this->actingAs($user)->get(route('files.download', ['disk' => $this->disk, 'path' => 'escape/fuera-'.basename($this->root).'.txt']))->assertNotFound();
+    }
+
+    public function test_index_redirects_to_first_disk_or_to_the_create_form(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user)->get(route('files.index'))->assertRedirect(route('files.show', $this->disk));
+
+        $this->disk->delete();
+        $this->actingAs($user)->get(route('files.index'))->assertRedirect(route('storage-disks.create'));
+    }
+
+    public function test_each_disk_browses_its_own_root(): void
+    {
+        $other = sys_get_temp_dir().'/filebrowser-otro-'.uniqid();
+        File::ensureDirectoryExists($other);
+        file_put_contents($other.'/solo-en-el-otro.txt', 'x');
+        $second = StorageDisk::create(['name' => 'Segundo', 'path' => $other]);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('files.show', $second))->assertOk()->assertSee('solo-en-el-otro.txt')->assertDontSee('README.txt');
+
+        File::deleteDirectory($other);
     }
 }

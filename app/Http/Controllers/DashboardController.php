@@ -7,11 +7,11 @@ use App\Models\BackupJobRun;
 use App\Models\DatabaseConnection;
 use App\Models\Target;
 use App\Services\JobSchedule;
-use Illuminate\Support\Facades\Cache;
+use App\Services\StorageStats;
 
 class DashboardController extends Controller
 {
-    public function __invoke(JobSchedule $schedule)
+    public function __invoke(JobSchedule $schedule, StorageStats $storage)
     {
         $jobs = BackupJob::with(['runs' => fn ($q) => $q->limit(1)])->orderBy('name')->get();
 
@@ -59,48 +59,10 @@ class DashboardController extends Controller
             'ok24h' => (int) ($runs24h['success'] ?? 0),
             'failed24h' => (int) ($runs24h['failed'] ?? 0),
             'lastDbBackup' => $lastDbBackup,
-            'storage' => $this->storage(),
+            'storage' => $storage->get(),
             'connections' => DatabaseConnection::count(),
             'targets' => Target::count(),
         ]);
     }
 
-    /**
-     * Uso del disco y lo que ocupan backups y logs. Recorrer el árbol sobre NFS
-     * cuesta, así que se cachea unos minutos.
-     */
-    private function storage(): array
-    {
-        return Cache::remember('dashboard.storage', 600, function () {
-            $root = config('backups.browse_root');
-
-            return [
-                'total' => @disk_total_space($root) ?: null,
-                'free' => @disk_free_space($root) ?: null,
-                'backups' => $this->directoryStats(config('backups.path')),
-                'logs' => $this->directoryStats(config('backups.logs_path')),
-            ];
-        });
-    }
-
-    private function directoryStats(string $dir): array
-    {
-        $bytes = 0;
-        $files = 0;
-
-        if (is_dir($dir)) {
-            $iterator = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS)
-            );
-
-            foreach ($iterator as $file) {
-                if ($file->isFile()) {
-                    $bytes += $file->getSize();
-                    $files++;
-                }
-            }
-        }
-
-        return ['bytes' => $bytes, 'files' => $files];
-    }
 }

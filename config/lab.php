@@ -3,20 +3,15 @@
 return [
     // Descubrimiento de servicios vía la API de Portainer (ve las 4 máquinas por sus agentes).
     'portainer' => [
-        'url' => env('PORTAINER_URL', 'http://portainer:9000'),
+        'url' => env('PORTAINER_URL', 'http://portainer:9000'), // editable en Ajustes
         'token' => env('PORTAINER_TOKEN'),
     ],
 
     // Host del endpoint "local" de Portainer (socket de Docker del homelab): no trae IP en su URL.
-    'local_host' => env('LAB_LOCAL_HOST', '192.168.1.10'),
+    'local_host' => env('LAB_LOCAL_HOST'),
 
-    // IP de cada máquina → sección de Lab. Las que no estén aquí usan el nombre del endpoint en Portainer.
-    'sections_by_host' => [
-        '192.168.1.10' => 'Homelab',
-        '192.168.1.12' => 'Workstation',
-        '192.168.1.11' => 'Raspberry Pi',
-        '192.168.1.13' => 'VPS (Up)',
-    ],
+    // IP de cada máquina → sección de Lab (se define en Ajustes). Las que falten usan el nombre del endpoint en Portainer.
+    'sections_by_host' => [],
 
     // Puertos que se sirven por HTTPS.
     'https_ports' => [443, 8443, 9443],

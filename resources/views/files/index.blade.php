@@ -8,21 +8,24 @@
     <x-slot name="header">
         <div class="flex flex-wrap items-baseline justify-between gap-2">
             <h2 class="font-semibold text-xl text-zinc-100 leading-tight">{{ $label }}</h2>
-            @if ($total)
-                <span class="font-sans text-sm text-zinc-500">
-                    {{ $human($total - $free) }} usados de {{ $human($total) }} · {{ $human($free) }} libres
-                </span>
-            @endif
+            <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                @if ($total)
+                    <span class="font-sans text-sm text-zinc-500">
+                        {{ $human($total - $free) }} usados de {{ $human($total) }} · {{ $human($free) }} libres
+                    </span>
+                @endif
+                <a href="{{ route('storage-disks.edit', $disk) }}" class="text-sm text-zinc-400 hover:text-red-400">Editar disco</a>
+            </div>
         </div>
     </x-slot>
 
     <div class="py-12">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
             <nav class="mb-4 flex flex-wrap items-center gap-1 text-sm text-zinc-400">
-                <a href="{{ route('files.index') }}" class="hover:text-red-400 {{ $current === '' ? 'text-zinc-100' : '' }}">/</a>
+                <a href="{{ route('files.show', $disk) }}" class="hover:text-red-400 {{ $current === '' ? 'text-zinc-100' : '' }}">/</a>
                 @foreach ($crumbs as $crumb)
                     <span class="text-zinc-600">/</span>
-                    <a href="{{ route('files.index', ['path' => $crumb['path']]) }}"
+                    <a href="{{ route('files.show', ['disk' => $disk, 'path' => $crumb['path']]) }}"
                        class="hover:text-red-400 {{ $loop->last ? 'text-zinc-100' : '' }}">{{ $crumb['name'] }}</a>
                 @endforeach
             </nav>
@@ -41,7 +44,7 @@
                     @if ($parent !== null)
                         <x-table.row>
                             <x-table.td colspan="3">
-                                <a href="{{ route('files.index', ['path' => $parent]) }}" class="text-zinc-400 hover:text-red-400">↰ ..</a>
+                                <a href="{{ route('files.show', ['disk' => $disk, 'path' => $parent]) }}" class="text-zinc-400 hover:text-red-400">↰ ..</a>
                             </x-table.td>
                         </x-table.row>
                     @endif
@@ -52,11 +55,11 @@
                                 @if (! $entry['readable'])
                                     <span class="text-zinc-600" title="Sin permiso de lectura"><span aria-hidden="true">🔒</span> {{ $entry['name'] }}{{ $entry['is_dir'] ? '/' : '' }}</span>
                                 @elseif ($entry['is_dir'])
-                                    <a href="{{ route('files.index', ['path' => $entry['path']]) }}" class="font-medium text-zinc-100 hover:text-red-400">
+                                    <a href="{{ route('files.show', ['disk' => $disk, 'path' => $entry['path']]) }}" class="font-medium text-zinc-100 hover:text-red-400">
                                         <span aria-hidden="true" class="text-red-500">▸</span> {{ $entry['name'] }}/
                                     </a>
                                 @else
-                                    <a href="{{ route('files.download', ['path' => $entry['path']]) }}" class="text-zinc-300 hover:text-red-400" title="Descargar">
+                                    <a href="{{ route('files.download', ['disk' => $disk, 'path' => $entry['path']]) }}" class="text-zinc-300 hover:text-red-400" title="Descargar">
                                         <span aria-hidden="true" class="text-zinc-600">·</span> {{ $entry['name'] }}
                                     </a>
                                 @endif
