@@ -2,21 +2,32 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\StorageDisk;
 use Illuminate\Http\Request;
 
 /**
- * Explorador de solo lectura del disco de la Pi. Nunca escribe ni borra: el
- * volumen además está montado :ro en el contenedor.
+ * Explorador de solo lectura de los discos definidos por el usuario. Nunca escribe ni borra: el
+ * volumen conviene montarlo :ro en el contenedor.
  */
 class FileBrowserController extends Controller
 {
-    public function index(Request $request)
+    /** Sin disco elegido: el primero, o el formulario para crear uno si todavía no hay. */
+    public function index()
     {
-        $root = $this->root();
+        $disk = StorageDisk::orderBy('id')->first();
+
+        return $disk
+            ? redirect()->route('files.show', $disk)
+            : redirect()->route('storage-disks.create');
+    }
+
+    public function show(Request $request, StorageDisk $disk)
+    {
+        $root = $this->root($disk);
         $absolute = $this->resolve($root, (string) $request->query('path', ''));
 
         if (is_file($absolute)) {
-            return redirect()->route('files.download', ['path' => $this->relative($root, $absolute)]);
+            return redirect()->route('files.download', ['disk' => $disk, 'path' => $this->relative($root, $absolute)]);
         }
 
         abort_unless(is_dir($absolute), 404);
@@ -55,7 +66,8 @@ class FileBrowserController extends Controller
         }
 
         return view('files.index', [
-            'label' => config('backups.browse_label'),
+            'disk' => $disk,
+            'label' => $disk->name,
             'current' => $current,
             'parent' => $current === '' ? null : (str_contains($current, '/') ? dirname($current) : ''),
             'crumbs' => $crumbs,
@@ -66,9 +78,9 @@ class FileBrowserController extends Controller
         ]);
     }
 
-    public function download(Request $request)
+    public function download(Request $request, StorageDisk $disk)
     {
-        $root = $this->root();
+        $root = $this->root($disk);
         $absolute = $this->resolve($root, (string) $request->query('path', ''));
 
         abort_unless(is_file($absolute) && is_readable($absolute), 404);
@@ -76,10 +88,10 @@ class FileBrowserController extends Controller
         return response()->download($absolute);
     }
 
-    private function root(): string
+    private function root(StorageDisk $disk): string
     {
-        $root = realpath(config('backups.browse_root'));
-        abort_if($root === false, 503, 'El disco no está montado.');
+        $root = $disk->root();
+        abort_if($root === null, 503, 'El disco no está montado o su ruta no está permitida.');
 
         return $root;
     }

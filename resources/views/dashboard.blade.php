@@ -54,7 +54,7 @@
                 </div>
 
                 <div class="rounded-lg bg-zinc-900 p-5 ring-1 ring-zinc-800 shadow-sm">
-                    <div class="text-sm text-zinc-400">{{ config('backups.browse_label') }}</div>
+                    <div class="text-sm text-zinc-400">{{ $storage['label'] ?? 'Disco externo' }}</div>
                     @if ($usedPct !== null)
                         <div class="mt-2 text-2xl font-semibold text-zinc-100 tabular-nums">{{ $usedPct }}% <span class="text-base font-normal text-zinc-500">usado</span></div>
                         <div class="mt-2 h-1.5 w-full rounded-full bg-zinc-800" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $usedPct }}" aria-label="Uso del disco">
@@ -62,7 +62,10 @@
                         </div>
                         <div class="mt-2 text-sm text-zinc-500 tabular-nums">{{ Bytes::human($storage['free']) }} libres de {{ Bytes::human($storage['total']) }}</div>
                     @else
-                        <div class="mt-2 text-2xl font-semibold text-zinc-500">Sin montar</div>
+                        <div class="mt-2 text-2xl font-semibold text-zinc-500">{{ ($storage['label'] ?? null) ? 'Sin montar' : 'Sin disco' }}</div>
+                        @unless ($storage['label'] ?? null)
+                            <a href="{{ route('storage-disks.create') }}" class="mt-1 block text-sm text-red-400 hover:text-red-300">Agregar un disco →</a>
+                        @endunless
                     @endif
                 </div>
             </div>

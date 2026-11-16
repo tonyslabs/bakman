@@ -14,7 +14,7 @@ return [
     // los archivos (la app corre en UTC).
     'timezone' => env('BACKUPS_TIMEZONE', 'America/Managua'),
 
-    // Raíz del explorador de archivos (el disco de la Pi, montado de solo lectura).
-    'browse_root' => env('FILES_ROOT', '/mnt/pi'),
-    'browse_label' => env('FILES_LABEL', 'Disco Pi'),
+    // Ruta con la que se crea el primer disco del explorador al migrar una instalación nueva.
+    // Después los discos se gestionan desde Almacenamiento (botón +); esta variable ya no se usa.
+    'browse_root' => env('FILES_ROOT', '/mnt/external'),
 ];

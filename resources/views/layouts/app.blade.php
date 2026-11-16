@@ -72,10 +72,18 @@
                         </x-sidebar-link>
                     </x-sidebar-group>
 
-                    <x-sidebar-group label="Almacenamiento" :open="request()->routeIs('files.*')">
-                        <x-sidebar-link :href="route('files.index')" :active="request()->routeIs('files.*')">
-                            {{ config('backups.browse_label') }}
-                        </x-sidebar-link>
+                    @php($disks = \App\Models\StorageDisk::orderBy('id')->get(['id', 'name']))
+                    <x-sidebar-group label="Almacenamiento" :open="request()->routeIs('files.*') || request()->routeIs('storage-disks.*')"
+                        :add-href="route('storage-disks.create')" add-title="Agregar disco">
+                        @forelse ($disks as $disk)
+                            <x-sidebar-link :href="route('files.show', $disk)" :active="request()->route('disk')?->id === $disk->id">
+                                {{ $disk->name }}
+                            </x-sidebar-link>
+                        @empty
+                            <x-sidebar-link :href="route('storage-disks.create')" :active="request()->routeIs('storage-disks.create')">
+                                {{ __('Agregar disco') }}
+                            </x-sidebar-link>
+                        @endforelse
                     </x-sidebar-group>
 
                     <x-sidebar-group label="Lab" :open="request()->routeIs('lab.*')">
@@ -104,6 +112,10 @@
                             {{ __('Clave SSH') }}
                         </x-sidebar-link>
                     </x-sidebar-group>
+
+                    <x-sidebar-link :href="route('settings.edit')" :active="request()->routeIs('settings.edit')">
+                        {{ __('Ajustes') }}
+                    </x-sidebar-link>
                 </nav>
 
                 <!-- User area -->
