@@ -2,12 +2,13 @@
 #
 # Necesita una base MySQL/MariaDB y un Redis que ya tengas levantados: bakman NO los incluye.
 # Copia deploy.env.example a .env, rellénalo y ejecuta:  docker compose up -d
+# (descarga ghcr.io/tonyslabs/bakman; con --build lo construye desde el código)
 #
 # Si tu MariaDB/Redis viven en otra red de Docker, no edites este archivo: crea un
 # docker-compose.override.yml (ver README, "Conectar con tu base de datos y Redis").
 services:
   backend-manager:
-    image: ${BAKMAN_IMAGE:-bakman:local}
+    image: ${BAKMAN_IMAGE:-ghcr.io/tonyslabs/bakman:latest}
     build: .
     container_name: backend-manager
     restart: unless-stopped

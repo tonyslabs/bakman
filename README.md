@@ -61,11 +61,23 @@ Datos que necesita fuera del contenedor:
 
 ## Puesta en marcha
 
-### 1. Clonar
+### 1. Obtener los archivos
+
+Con la imagen publicada solo necesitas dos archivos (no hace falta clonar el código):
 
 ```bash
-git clone https://github.com/<usuario>/bakman.git
+mkdir bakman && cd bakman
+curl -fsSLO https://raw.githubusercontent.com/tonyslabs/bakman/main/docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/tonyslabs/bakman/main/deploy.env.example -o .env
+```
+
+La imagen (`linux/amd64` y `linux/arm64`) está en `ghcr.io/tonyslabs/bakman`. Si prefieres construirla tú mismo desde el código:
+
+```bash
+git clone https://github.com/tonyslabs/bakman.git
 cd bakman
+cp deploy.env.example .env
+# y en el paso 5 usa: docker compose up -d --build
 ```
 
 ### 2. Crear la base de datos
@@ -80,11 +92,7 @@ GRANT ALL ON backend_manager.* TO 'bakman'@'%';
 
 ### 3. Crear el `.env` de despliegue
 
-```bash
-cp deploy.env.example .env
-```
-
-Rellena al menos `APP_KEY`, `DB_HOST`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` (el compose se niega a arrancar si falta alguno). Para generar la `APP_KEY` sin tener PHP instalado:
+Edita el `.env` que acabas de crear (es la plantilla `deploy.env.example`). Rellena al menos `APP_KEY`, `DB_HOST`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` (el compose se niega a arrancar si falta alguno). Para generar la `APP_KEY` sin tener PHP instalado:
 
 ```bash
 docker run --rm php:8.4-cli php -r "echo 'base64:'.base64_encode(random_bytes(32)).PHP_EOL;"
@@ -115,7 +123,7 @@ Para el explorador de archivos, monta tus discos en `docker-compose.yml` (secci�
 ### 5. Levantar
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 docker compose logs -f
 ```
 
@@ -139,6 +147,7 @@ Las del bloque "obligatorio" de `deploy.env.example` hay que definirlas; el rest
 | `DB_HOST` / `DB_PORT` / `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` | Base de datos propia de bakman (la tuya; no se incluye). |
 | `REDIS_HOST` / `REDIS_PORT` / `REDIS_USERNAME` / `REDIS_PASSWORD` / `REDIS_PREFIX` | Tu Redis para la cola, la caché y los locks (no se incluye). |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Usuario administrador que se crea en el primer arranque (solo si no hay usuarios). |
+| `BAKMAN_IMAGE` | Imagen a usar (por defecto `ghcr.io/tonyslabs/bakman:latest`; fija una versión, p. ej. `:1.0.0`, para actualizar a voluntad). |
 | `BAKMAN_BIND` / `BAKMAN_PORT` | IP y puerto en que se publica la web (por defecto `127.0.0.1:8091`). |
 | `APP_URL` / `APP_LOCALE` / `TZ` | URL de acceso, idioma (`es`) y zona horaria del contenedor. |
 | `BACKUPS_DIR` / `LOGS_DIR` | Carpetas del host donde se guardan los backups y los logs de scripts. |
@@ -147,24 +156,6 @@ Las del bloque "obligatorio" de `deploy.env.example` hay que definirlas; el rest
 | `NTFY_URL` / `NTFY_TOKEN` | Servidor ntfy para los avisos de jobs. |
 
 Portainer, ntfy, la zona horaria de los cron, las rutas del contenedor, los puertos y nombres de *Lab* y los timeouts de jobs también se editan en la web, en **Ajustes**, y ahí mandan sobre el `.env` sin reiniciar el contenedor. Los discos del explorador se gestionan en **Almacenamiento → +**.
-
----|---|
-| `APP_KEY` | Clave de cifrado de Laravel (obligatoria). |
-| `APP_URL` | URL con la que se accede a bakman. |
-| `APP_LOCALE` | Idioma (`es`). |
-| `TZ` | Zona horaria del contenedor. |
-| `DB_*` | Conexión a la base de datos propia de bakman. |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Usuario administrador que se crea en el primer arranque (solo si no hay usuarios). |
-| `BACKUPS_PATH` | Ruta de los backups dentro del contenedor (por defecto `/data/backups`). |
-| `LOGS_PATH` | Ruta de los logs de scripts (por defecto `/data/logs`). |
-| `BACKUPS_TIMEZONE` | Zona horaria en la que se interpretan los cron y se nombran los archivos. |
-| `SSH_KEY_PATH` | Clave privada SSH (por defecto `/data/ssh/id_ed25519`). |
-| `FILES_ROOT` / `FILES_LABEL` | Raíz y nombre del explorador de archivos. |
-| `PORTAINER_URL` / `PORTAINER_TOKEN` | API de Portainer para el autodescubrimiento de *Lab*. |
-| `LAB_LOCAL_HOST` | Host con el que se enlazan los servicios del endpoint local de Portainer. |
-| `PHP_CLI_SERVER_WORKERS` | Workers del servidor web (requiere `artisan serve --no-reload`, ya configurado). |
-
-La asignación de cada máquina a su sección de *Lab*, los puertos que se consideran "no web" y los nombres a mostrar se definen en `config/lab.php`.
 
 ---
 
@@ -205,6 +196,7 @@ docker run --rm -v "$PWD":/app -w /app php:8.4-cli-bookworm php vendor/bin/phpun
 
 ## Operación
 
+- **Actualizar** (imagen publicada): `docker compose pull && docker compose up -d`. Cambia `BAKMAN_IMAGE` a la nueva versión si la tienes fijada; las migraciones se aplican solas al arrancar. Consulta el [CHANGELOG](CHANGELOG.md) antes de subir de versión.
 - **Redeploy sin cortar jobs**: `docker compose build` primero y `docker compose up -d` después. El contenedor espera a que termine el job en curso antes de detenerse.
 - **Restaurar un backup de base de datos**:
   ```bash
