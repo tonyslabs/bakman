@@ -40,7 +40,7 @@
                         </div>
                         <div class="col-span-2">
                             <x-input-label for="host" value="Host (IP tailnet o hostname)" />
-                            <x-text-input id="host" name="host" class="mt-1 block w-full" value="{{ old('host', $project->host ?? '192.168.1.10') }}" required />
+                            <x-text-input id="host" name="host" class="mt-1 block w-full" value="{{ old('host', $project->host ?? '') }}" placeholder="192.168.1.10" required />
                             <x-input-error :messages="$errors->get('host')" class="mt-2" />
                         </div>
                     </div>

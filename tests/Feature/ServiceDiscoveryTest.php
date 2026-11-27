@@ -17,7 +17,7 @@ class ServiceDiscoveryTest extends TestCase
     {
         parent::setUp();
         config(['lab.portainer.url' => 'http://portainer.test', 'lab.portainer.token' => 'ptr_x', 'lab.local_host' => '192.168.1.10',
-            'lab.sections_by_host' => ['192.168.1.10' => 'Homelab', '192.168.1.11' => 'Raspberry Pi']]);
+            'lab.sections_by_host' => ['192.168.1.10' => 'Homelab', '192.168.1.20' => 'Raspberry Pi']]);
     }
 
     private function fakePortainer(array $homelabContainers, array $piContainers = [], int $piStatus = 1): void
@@ -25,7 +25,7 @@ class ServiceDiscoveryTest extends TestCase
         Http::fake([
             'portainer.test/api/endpoints' => Http::response([
                 ['Id' => 1, 'Name' => 'local', 'URL' => 'unix:///var/run/docker.sock', 'Status' => 1],
-                ['Id' => 2, 'Name' => 'pi-user', 'URL' => 'tcp://192.168.1.11:9001', 'Status' => $piStatus],
+                ['Id' => 2, 'Name' => 'pi', 'URL' => 'tcp://192.168.1.20:9001', 'Status' => $piStatus],
             ]),
             'portainer.test/api/endpoints/1/docker/containers/json*' => Http::response($homelabContainers),
             'portainer.test/api/endpoints/2/docker/containers/json*' => Http::response($piContainers),
@@ -59,7 +59,7 @@ class ServiceDiscoveryTest extends TestCase
         $this->assertDatabaseHas('lab_projects', ['section' => 'Homelab', 'container' => 'prometheus', 'port' => null, 'monitor_only' => true]);
         // Publica HTTP y HTTPS: enlaza al HTTP.
         $this->assertDatabaseHas('lab_projects', ['container' => 'portainer', 'scheme' => 'http', 'port' => 9000]);
-        $this->assertDatabaseHas('lab_projects', ['section' => 'Raspberry Pi', 'container' => 'node-exporter', 'host' => '192.168.1.11', 'container_health' => 'healthy']);
+        $this->assertDatabaseHas('lab_projects', ['section' => 'Raspberry Pi', 'container' => 'node-exporter', 'host' => '192.168.1.20', 'container_health' => 'healthy']);
     }
 
     public function test_databases_are_status_only_and_get_proper_names(): void

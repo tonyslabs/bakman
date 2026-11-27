@@ -1,70 +1,78 @@
+# bakman — Backend Manager.
+#
+# Necesita una base MySQL/MariaDB y un Redis que ya tengas levantados: bakman NO los incluye.
+# Copia deploy.env.example a .env, rellénalo y ejecuta:  docker compose up -d
+#
+# Si tu MariaDB/Redis viven en otra red de Docker, no edites este archivo: crea un
+# docker-compose.override.yml (ver README, "Conectar con tu base de datos y Redis").
 services:
   backend-manager:
+    image: ${BAKMAN_IMAGE:-bakman:local}
     build: .
     container_name: backend-manager
     restart: unless-stopped
     # Ver stopwaitsecs del queue en docker/supervisord.conf: al parar se espera al job en curso.
     stop_grace_period: 11m
     ports:
-      - "192.168.1.10:8091:8080"
+      # Por defecto solo en localhost. Para abrirlo en tu LAN/VPN pon BAKMAN_BIND a esa IP privada.
+      - "${BAKMAN_BIND:-127.0.0.1}:${BAKMAN_PORT:-8091}:8080"
     volumes:
-      - /data/backups:/data/backups
-      - /data/logs:/data/logs
-      # Discos que se exploran en Almacenamiento (solo lectura). Se registran en la web con el botón +.
-      - /data:/mnt/external:ro
-      - backend_manager_ssh:/data/ssh
+      - ${BACKUPS_DIR:-./data/backups}:/data/backups
+      - ${LOGS_DIR:-./data/logs}:/data/logs
+      - bakman_ssh:/data/ssh
       - backend_manager_storage:/var/www/html/storage
+      # Discos que se exploran en Almacenamiento: móntalos aquí en solo lectura y regístralos
+      # en la web con el botón +. Ejemplo:
+      # - /mnt/mi-disco:/mnt/external:ro
     environment:
-      TZ: America/Managua
+      TZ: ${TZ:-UTC}
       APP_ENV: production
       APP_DEBUG: "false"
-      APP_URL: http://192.168.1.10:8091
+      APP_URL: ${APP_URL:-http://localhost:8091}
       APP_NAME: "Backend Manager"
-      APP_LOCALE: es
-      # artisan serve atiende una petición a la vez: con 1 worker las tarjetas de Lab se
-      # comprobaban en serie y el chequeo de bakman a sí mismo se bloqueaba.
-      PHP_CLI_SERVER_WORKERS: 4
-      # Token de API de Portainer (Lab → Homelab descubre los servicios con él). Va en .env.
-      PORTAINER_TOKEN: ${PORTAINER_TOKEN:-}
-      APP_KEY: ${BACKEND_MANAGER_APP_KEY}
+      APP_LOCALE: ${APP_LOCALE:-es}
+      APP_KEY: ${APP_KEY:?Define APP_KEY en .env (ver deploy.env.example)}
+      PHP_CLI_SERVER_WORKERS: ${PHP_CLI_SERVER_WORKERS:-4}
+
+      # Base de datos propia de bakman (la creas tú; ver README).
       DB_CONNECTION: mysql
-      DB_HOST: mariadb
-      DB_PORT: 3306
-      DB_DATABASE: backend_manager
-      DB_USERNAME: root
-      DB_PASSWORD: ${BACKEND_MANAGER_DB_PASSWORD}
-      # Cola, cache y locks del scheduler en el Redis compartido (red `core`), con usuario propio
-      # que solo ve claves bakman:* (ACL en ~/docker/databases/redis/users.acl).
+      DB_HOST: ${DB_HOST:?Define DB_HOST en .env}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_DATABASE: ${DB_DATABASE:-backend_manager}
+      DB_USERNAME: ${DB_USERNAME:?Define DB_USERNAME en .env}
+      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
+
+      # Cola, caché y locks del scheduler en tu Redis.
       QUEUE_CONNECTION: redis
       CACHE_STORE: redis
       REDIS_CLIENT: predis
-      REDIS_HOST: redis_service
-      REDIS_USERNAME: bakman
-      REDIS_PASSWORD: ${BAKMAN_REDIS_PASSWORD}
-      REDIS_PREFIX: "bakman:"
+      REDIS_HOST: ${REDIS_HOST:?Define REDIS_HOST en .env}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_USERNAME: ${REDIS_USERNAME:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PREFIX: ${REDIS_PREFIX:-bakman:}
       # > timeout del job (3700 s): que un backup largo no se reencole mientras corre.
       REDIS_QUEUE_RETRY_AFTER: 3900
-      # Avisos por ntfy (~/docker/apps/ntfy). Token del usuario `bakman` (solo publica en bakman-*).
-      NTFY_URL: ${NTFY_URL:-}
-      NTFY_TOKEN: ${NTFY_TOKEN:-}
-      NTFY_PUBLIC_URL: ${NTFY_PUBLIC_URL:-http://192.168.1.10:8093}
-      ADMIN_EMAIL: ${BACKEND_MANAGER_ADMIN_EMAIL}
-      ADMIN_PASSWORD: ${BACKEND_MANAGER_ADMIN_PASSWORD}
+
+      # Administrador inicial (solo se crea si no hay ningún usuario).
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Define ADMIN_EMAIL en .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Define ADMIN_PASSWORD en .env}
+
       SSH_KEY_PATH: /data/ssh/id_ed25519
       BACKUPS_PATH: /data/backups
+
+      # Opcionales: también se pueden poner después desde Ajustes en la web.
+      PORTAINER_URL: ${PORTAINER_URL:-http://portainer:9000}
+      PORTAINER_TOKEN: ${PORTAINER_TOKEN:-}
+      NTFY_URL: ${NTFY_URL:-}
+      NTFY_TOKEN: ${NTFY_TOKEN:-}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/up"]
       interval: 30s
       timeout: 5s
       retries: 3
-    networks:
-      - core
 
 volumes:
-  backend_manager_ssh:
-    external: true
+  bakman_ssh:
+    name: ${SSH_VOLUME:-bakman_ssh}
   backend_manager_storage:
-
-networks:
-  core:
-    external: true

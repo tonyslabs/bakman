@@ -33,14 +33,14 @@ class DatabaseConnectionTest extends TestCase
 
         $response = $this->actingAs($user)->post(route('database-connections.store'), [
             'name' => 'vps-mariadb',
-            'host' => '192.168.1.13',
+            'host' => '192.168.1.30',
             'port' => 4226,
             'username' => 'root',
             'password' => 'secret-de-prueba',
         ]);
 
         $response->assertRedirect(route('database-connections.index'));
-        $this->assertDatabaseHas('database_connections', ['name' => 'vps-mariadb', 'host' => '192.168.1.13']);
+        $this->assertDatabaseHas('database_connections', ['name' => 'vps-mariadb', 'host' => '192.168.1.30']);
 
         $connection = DatabaseConnection::where('name', 'vps-mariadb')->firstOrFail();
         $this->assertSame('secret-de-prueba', $connection->password);
@@ -105,7 +105,7 @@ class DatabaseConnectionTest extends TestCase
         $user = User::factory()->create();
         $connection = DatabaseConnection::create([
             'name' => 'env-test',
-            'host' => '192.168.1.13',
+            'host' => '192.168.1.30',
             'port' => 4226,
             'username' => 'root',
             'password' => 'p@ss #1',
@@ -115,7 +115,7 @@ class DatabaseConnectionTest extends TestCase
         $laravel->assertOk();
         $this->assertSame(implode("\n", [
             'DB_CONNECTION=mysql',
-            'DB_HOST=192.168.1.13',
+            'DB_HOST=192.168.1.30',
             'DB_PORT=4226',
             'DB_DATABASE=',
             'DB_USERNAME=root',
@@ -125,7 +125,7 @@ class DatabaseConnectionTest extends TestCase
         $fastapi = $this->actingAs($user)->postJson(route('database-connections.env', $connection), ['framework' => 'fastapi']);
         $fastapi->assertOk();
         $this->assertStringContainsString("DB_PASSWORD='p@ss #1'", $fastapi->json('text'));
-        $this->assertStringContainsString('DATABASE_URL=mysql+pymysql://root:p%40ss%20%231@192.168.1.13:4226/', $fastapi->json('text'));
+        $this->assertStringContainsString('DATABASE_URL=mysql+pymysql://root:p%40ss%20%231@192.168.1.30:4226/', $fastapi->json('text'));
 
         $this->actingAs($user)->postJson(route('database-connections.env', $connection), ['framework' => 'django'])
             ->assertStatus(422);

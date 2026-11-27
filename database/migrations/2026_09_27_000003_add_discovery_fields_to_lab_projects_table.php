@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::table('lab_projects', function (Blueprint $table) {
             // Contenedor al que corresponde la tarjeta (se cruza por sección + nombre).
             $table->string('container', 150)->nullable()->after('monitor_only');
-            // true = la creó el descubrimiento automático; false = la creó user a mano.
+            // true = la creó el descubrimiento automático; false = la creó el usuario a mano.
             $table->boolean('discovered')->default(false)->after('container');
             // Oculta sin borrar: si se borrara, la siguiente sincronización la volvería a crear.
             $table->boolean('hidden')->default(false)->after('discovered');

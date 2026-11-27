@@ -115,7 +115,7 @@ class ServiceDiscovery
             ->json() ?? [];
     }
 
-    /** tcp://192.168.1.11:9001 → 192.168.1.11; el socket local → la IP del homelab. */
+    /** tcp://192.168.1.20:9001 → 192.168.1.20; el socket local → la IP del homelab. */
     private function endpointHost(array $endpoint): string
     {
         $host = parse_url($endpoint['URL'] ?? '', PHP_URL_HOST);

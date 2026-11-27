@@ -14,7 +14,7 @@ class LabHomelabTest extends TestCase
 
     public function test_homelab_groups_cards_by_section(): void
     {
-        LabProject::create(['module' => 'homelab', 'section' => 'Raspberry Pi', 'name' => 'cAdvisor', 'scheme' => 'http', 'host' => '192.168.1.11', 'port' => 8082]);
+        LabProject::create(['module' => 'homelab', 'section' => 'Raspberry Pi', 'name' => 'cAdvisor', 'scheme' => 'http', 'host' => '192.168.1.20', 'port' => 8082]);
         LabProject::create(['module' => 'homelab', 'section' => 'Homelab', 'name' => 'Nextcloud', 'scheme' => 'http', 'host' => '192.168.1.10', 'port' => 8090]);
 
         $this->actingAs(User::factory()->create())->get(route('lab.show', 'homelab'))
@@ -25,20 +25,20 @@ class LabHomelabTest extends TestCase
     public function test_can_save_section(): void
     {
         $this->actingAs(User::factory()->create())->post(route('lab.projects.store', 'homelab'), [
-            'section' => 'VPS', 'name' => 'Divia', 'scheme' => 'https', 'host' => 'app.example.com',
+            'section' => 'VPS', 'name' => 'Panel', 'scheme' => 'https', 'host' => 'app.example.com',
         ])->assertRedirect(route('lab.show', 'homelab'));
 
-        $this->assertDatabaseHas('lab_projects', ['name' => 'Divia', 'section' => 'VPS']);
+        $this->assertDatabaseHas('lab_projects', ['name' => 'Panel', 'section' => 'VPS']);
     }
 
     public function test_monitor_only_card_is_not_a_link_and_loopback_is_not_checked(): void
     {
-        $agent = LabProject::create(['module' => 'homelab', 'section' => 'VPS', 'name' => 'Portainer Agent', 'scheme' => 'https', 'host' => '192.168.1.13', 'port' => 9001, 'path' => '/ping', 'monitor_only' => true]);
-        $local = LabProject::create(['module' => 'develop', 'name' => 'Divia local', 'scheme' => 'http', 'host' => '127.0.0.1', 'port' => 8000]);
+        $agent = LabProject::create(['module' => 'homelab', 'section' => 'VPS', 'name' => 'Portainer Agent', 'scheme' => 'https', 'host' => '192.168.1.30', 'port' => 9001, 'path' => '/ping', 'monitor_only' => true]);
+        $local = LabProject::create(['module' => 'develop', 'name' => 'App local', 'scheme' => 'http', 'host' => '127.0.0.1', 'port' => 8000]);
         $user = User::factory()->create();
 
         $this->actingAs($user)->get(route('lab.show', 'homelab'))
-            ->assertOk()->assertSee('solo estado')->assertDontSee('href="https://192.168.1.13:9001/ping"', false);
+            ->assertOk()->assertSee('solo estado')->assertDontSee('href="https://192.168.1.30:9001/ping"', false);
         $this->actingAs($user)->get(route('lab.show', 'develop'))->assertSee('en tu equipo')->assertSee("mode: 'no-cors'", false);
         $this->actingAs($user)->getJson(route('lab.projects.ping', $local))->assertJson(['up' => null]);
     }

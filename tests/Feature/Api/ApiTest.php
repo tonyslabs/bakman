@@ -18,7 +18,7 @@ class ApiTest extends TestCase
     private function scriptJob(array $attributes = []): BackupJob
     {
         return BackupJob::create($attributes + [
-            'name' => 'proyecto-sync',
+            'name' => 'backup-sync',
             'type' => 'script',
             'command' => 'echo hola',
             'schedule_cron' => '0 */2 * * *|40 */2 * * *',
@@ -92,7 +92,7 @@ class ApiTest extends TestCase
 
         $this->getJson('/api/v1/jobs')
             ->assertOk()
-            ->assertJsonPath('data.0.name', 'proyecto-sync')
+            ->assertJsonPath('data.0.name', 'backup-sync')
             ->assertJsonPath('data.0.schedule', ['0 */2 * * *', '40 */2 * * *']);
 
         $this->getJson("/api/v1/jobs/{$job->id}")
@@ -134,15 +134,15 @@ class ApiTest extends TestCase
     {
         Sanctum::actingAs(User::factory()->create());
         $logs = sys_get_temp_dir().'/bakman-logs-'.uniqid();
-        mkdir("$logs/homelab/proyecto", 0777, true);
-        file_put_contents("$logs/homelab/proyecto/run.log", str_repeat('x', 2000)."\nFIN\n");
+        mkdir("$logs/homelab/scripts", 0777, true);
+        file_put_contents("$logs/homelab/scripts/run.log", str_repeat('x', 2000)."\nFIN\n");
         file_put_contents(dirname($logs).'/secreto.txt', 'no');
         config(['backups.logs_path' => $logs]);
 
         $job = $this->scriptJob();
         $run = BackupJobRun::create([
             'backup_job_id' => $job->id, 'status' => 'success',
-            'started_at' => now(), 'output_path' => 'homelab/proyecto/run.log',
+            'started_at' => now(), 'output_path' => 'homelab/scripts/run.log',
         ]);
 
         $this->getJson("/api/v1/runs/{$run->id}/log?bytes=1024")

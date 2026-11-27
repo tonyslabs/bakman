@@ -43,7 +43,7 @@ class NotifyTest extends TestCase
     public function test_failures_alert_first_then_every_n_and_recovery(): void
     {
         config(['notify.jobs.recordar_cada' => 3]);
-        $job = BackupJob::create(['name' => 'proyecto-sync', 'type' => 'script', 'command' => 'false', 'schedule_cron' => '0 * * * *', 'retention_count' => 5, 'enabled' => true]);
+        $job = BackupJob::create(['name' => 'backup-sync', 'type' => 'script', 'command' => 'false', 'schedule_cron' => '0 * * * *', 'retention_count' => 5, 'enabled' => true]);
         $alerts = app(JobAlerts::class);
         $run = fn ($status) => BackupJobRun::create(['backup_job_id' => $job->id, 'status' => $status, 'started_at' => now(), 'finished_at' => now(), 'duration_seconds' => 4, 'error_message' => $status === 'failed' ? 'SKU duplicado' : null]);
 
@@ -54,7 +54,7 @@ class NotifyTest extends TestCase
         $alerts->succeeded($job, $run('success'));
 
         $titles = array_column($this->sent(), 'title');
-        $this->assertSame(['Falló proyecto-sync', 'proyecto-sync sigue fallando (3 seguidas)', 'proyecto-sync volvió a funcionar'], $titles);
+        $this->assertSame(['Falló backup-sync', 'backup-sync sigue fallando (3 seguidas)', 'backup-sync volvió a funcionar'], $titles);
         $this->assertSame('bakman-jobs', $this->sent()[0]['topic']);
         $this->assertSame('SKU duplicado', $this->sent()[0]['message']);
     }

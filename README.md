@@ -53,7 +53,7 @@ Datos que necesita fuera del contenedor:
 ## Requisitos
 
 - **Docker** y **Docker Compose**.
-- Un servidor **MySQL 8 / MariaDB 10.6+** accesible en la misma red de Docker **con el nombre de host `mariadb`** (el script de arranque lo espera con ese nombre).
+- Un servidor **MySQL 8 / MariaDB 10.6+** que ya tengas levantado, y un **Redis 6+** (cola de jobs, caché y locks). bakman **no los incluye**: tú indicas host y credenciales en el `.env`.
 - Acceso **SSH por clave** a los servidores de los que se harán backups de archivos o donde se ejecutarán scripts.
 - Opcional: **Portainer** (2.x) con un *access token* para el autodescubrimiento de servicios en *Lab*.
 
@@ -64,48 +64,53 @@ Datos que necesita fuera del contenedor:
 ### 1. Clonar
 
 ```bash
-git clone git@github.com:tonyslabs/bakman.git
+git clone https://github.com/<usuario>/bakman.git
 cd bakman
 ```
 
-### 2. Crear el `.env` de despliegue
+### 2. Crear la base de datos
 
-`docker-compose.yml` toma estas variables de un `.env` junto a él:
+En tu servidor MySQL/MariaDB crea la base y un usuario para bakman:
 
-```dotenv
-BACKEND_MANAGER_APP_KEY=base64:...        # php artisan key:generate --show
-BACKEND_MANAGER_DB_PASSWORD=...           # contraseña de la BD de bakman
-BACKEND_MANAGER_ADMIN_EMAIL=admin@ejemplo.com
-BACKEND_MANAGER_ADMIN_PASSWORD=...        # usuario administrador inicial
-PORTAINER_TOKEN=                          # opcional: activa el autodescubrimiento de Lab
+```sql
+CREATE DATABASE backend_manager CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'bakman'@'%' IDENTIFIED BY '<contraseña>';
+GRANT ALL ON backend_manager.* TO 'bakman'@'%';
 ```
 
-Para generar la `APP_KEY` sin tener PHP instalado:
+### 3. Crear el `.env` de despliegue
+
+```bash
+cp deploy.env.example .env
+```
+
+Rellena al menos `APP_KEY`, `DB_HOST`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` (el compose se niega a arrancar si falta alguno). Para generar la `APP_KEY` sin tener PHP instalado:
 
 ```bash
 docker run --rm php:8.4-cli php -r "echo 'base64:'.base64_encode(random_bytes(32)).PHP_EOL;"
 ```
 
-> ⚠️ Guarda la `APP_KEY`: con ella se cifran las contraseñas de las conexiones de base de datos. Si se pierde, habrá que volver a introducirlas.
+> ⚠️ Guarda la `APP_KEY`: con ella se cifran las contraseñas de las conexiones de base de datos y los tokens de Ajustes. Si se pierde, habrá que volver a introducirlos.
 
-### 3. Crear la base de datos
+### 4. Conectar con tu base de datos y Redis
 
-En el servidor MySQL/MariaDB:
+`DB_HOST` y `REDIS_HOST` son los que ve el **contenedor**. Dos casos habituales:
 
-```sql
-CREATE DATABASE backend_manager CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+- **Están en otra máquina o publican su puerto en el host:** usa su IP o nombre DNS. No hace falta nada más.
+- **Son contenedores en una red de Docker propia:** conecta bakman a esa red con un `docker-compose.override.yml` junto al compose (Docker Compose lo lee solo; no lo subas a git):
+
+```yaml
+services:
+  backend-manager:
+    networks: [mi_red]
+networks:
+  mi_red:
+    external: true
 ```
 
-El usuario y el nombre de la base se configuran en `docker-compose.yml` (`DB_USERNAME`, `DB_DATABASE`).
+y usa en el `.env` los nombres de esos contenedores (`DB_HOST=mariadb`, `REDIS_HOST=redis`).
 
-### 4. Ajustar `docker-compose.yml`
-
-Revisa y adapta a tu entorno:
-
-- **Puerto publicado**: enlázalo a una IP privada (LAN o VPN), no a `0.0.0.0`.
-- **Red de Docker**: el compose usa una red externa compartida con la base de datos; créala si no existe (`docker network create <red>`).
-- **Montajes**: directorio de backups, de logs y, opcionalmente, el disco a explorar (en solo lectura).
-- **`APP_URL`**, **`TZ`** y **`APP_LOCALE`**.
+Para el explorador de archivos, monta tus discos en `docker-compose.yml` (sección `volumes`, **en solo lectura**) y regístralos después desde la web (**Almacenamiento → +**).
 
 ### 5. Levantar
 
@@ -114,7 +119,7 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-En el arranque, el contenedor espera a la base de datos, aplica las migraciones y, **si todavía no existe ningún usuario**, crea el administrador con `ADMIN_EMAIL` / `ADMIN_PASSWORD`. Después entra por el navegador con ese usuario.
+En el arranque, el contenedor espera a la base de datos (y se detiene con un mensaje claro si no consigue conectar), aplica las migraciones y, **si todavía no existe ningún usuario**, crea el administrador con `ADMIN_EMAIL` / `ADMIN_PASSWORD`. Después entra por el navegador con ese usuario.
 
 > Cambiar `ADMIN_PASSWORD` más adelante no modifica la contraseña de un usuario ya creado; cámbiala desde *Profile*.
 
@@ -126,8 +131,24 @@ En **SSH → Clave SSH** está la clave pública de bakman. Agrégala al `~/.ssh
 
 ## Variables de entorno
 
+Las del bloque "obligatorio" de `deploy.env.example` hay que definirlas; el resto tiene valor por defecto.
+
 | Variable | Uso |
 |---|---|
+| `APP_KEY` | Clave de cifrado de Laravel (obligatoria). |
+| `DB_HOST` / `DB_PORT` / `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` | Base de datos propia de bakman (la tuya; no se incluye). |
+| `REDIS_HOST` / `REDIS_PORT` / `REDIS_USERNAME` / `REDIS_PASSWORD` / `REDIS_PREFIX` | Tu Redis para la cola, la caché y los locks (no se incluye). |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Usuario administrador que se crea en el primer arranque (solo si no hay usuarios). |
+| `BAKMAN_BIND` / `BAKMAN_PORT` | IP y puerto en que se publica la web (por defecto `127.0.0.1:8091`). |
+| `APP_URL` / `APP_LOCALE` / `TZ` | URL de acceso, idioma (`es`) y zona horaria del contenedor. |
+| `BACKUPS_DIR` / `LOGS_DIR` | Carpetas del host donde se guardan los backups y los logs de scripts. |
+| `SSH_VOLUME` | Nombre del volumen con la clave SSH (por defecto `bakman_ssh`). |
+| `PORTAINER_URL` / `PORTAINER_TOKEN` | API de Portainer para el autodescubrimiento de *Lab*. |
+| `NTFY_URL` / `NTFY_TOKEN` | Servidor ntfy para los avisos de jobs. |
+
+Portainer, ntfy, la zona horaria de los cron, las rutas del contenedor, los puertos y nombres de *Lab* y los timeouts de jobs también se editan en la web, en **Ajustes**, y ahí mandan sobre el `.env` sin reiniciar el contenedor. Los discos del explorador se gestionan en **Almacenamiento → +**.
+
+---|---|
 | `APP_KEY` | Clave de cifrado de Laravel (obligatoria). |
 | `APP_URL` | URL con la que se accede a bakman. |
 | `APP_LOCALE` | Idioma (`es`). |

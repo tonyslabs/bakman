@@ -19,7 +19,7 @@ class ScriptJobTest extends TestCase
 
     private function target(): Target
     {
-        return Target::create(['name' => 'homelab', 'hostname' => '192.168.1.10', 'ssh_port' => 22, 'ssh_user' => 'user']);
+        return Target::create(['name' => 'homelab', 'hostname' => '192.168.1.10', 'ssh_port' => 22, 'ssh_user' => 'admin']);
     }
 
     public function test_can_create_script_job(): void
@@ -27,16 +27,16 @@ class ScriptJobTest extends TestCase
         $target = $this->target();
 
         $this->actingAs(User::factory()->create())->post(route('backup-jobs.store'), [
-            'name' => 'proyecto-sync',
+            'name' => 'backup-sync',
             'type' => 'script',
             'target_id' => $target->id,
-            'command' => 'cd /home/user/scripts/proyecto && .venv/bin/python sync_woocommerce.py',
+            'command' => 'cd /home/user/scripts/sync && .venv/bin/python sync.py',
             'timeout_seconds' => 1800,
             'schedule_cron' => '0 */6 * * *',
             'enabled' => '1',
         ])->assertRedirect(route('backup-jobs.index'));
 
-        $this->assertDatabaseHas('backup_jobs', ['name' => 'proyecto-sync', 'type' => 'script', 'timeout_seconds' => 1800]);
+        $this->assertDatabaseHas('backup_jobs', ['name' => 'backup-sync', 'type' => 'script', 'timeout_seconds' => 1800]);
     }
 
     public function test_script_job_requires_target_command_and_sane_timeout(): void
@@ -50,11 +50,11 @@ class ScriptJobTest extends TestCase
     {
         config(['backups.logs_path' => '/data/logs']);
         $job = BackupJob::create([
-            'name' => 'proyecto-sync', 'type' => 'script', 'target_id' => $this->target()->id,
+            'name' => 'backup-sync', 'type' => 'script', 'target_id' => $this->target()->id,
             'command' => 'true', 'schedule_cron' => '* * * * *', 'enabled' => true,
         ]);
 
-        $this->assertSame('/data/logs/homelab/proyecto-sync', app(BackupService::class)->jobDirectory($job));
+        $this->assertSame('/data/logs/homelab/backup-sync', app(BackupService::class)->jobDirectory($job));
     }
 
     public function test_failed_script_keeps_its_log_on_the_run(): void
@@ -62,10 +62,10 @@ class ScriptJobTest extends TestCase
         $root = sys_get_temp_dir().'/logs-'.uniqid();
         config(['backups.logs_path' => $root]);
         $job = BackupJob::create([
-            'name' => 'proyecto-sync', 'type' => 'script', 'target_id' => $this->target()->id,
+            'name' => 'backup-sync', 'type' => 'script', 'target_id' => $this->target()->id,
             'command' => 'false', 'schedule_cron' => '* * * * *', 'enabled' => true,
         ]);
-        $log = $root.'/homelab/proyecto-sync/proyecto-sync_2026-09-26_210000.log';
+        $log = $root.'/homelab/backup-sync/backup-sync_2026-09-26_210000.log';
         File::ensureDirectoryExists(dirname($log));
         file_put_contents($log, "boom\n");
 
@@ -83,7 +83,7 @@ class ScriptJobTest extends TestCase
 
         $run = BackupJobRun::firstOrFail();
         $this->assertSame('failed', $run->status);
-        $this->assertSame('homelab/proyecto-sync/proyecto-sync_2026-09-26_210000.log', $run->output_path);
+        $this->assertSame('homelab/backup-sync/backup-sync_2026-09-26_210000.log', $run->output_path);
         $this->assertStringContainsString('boom', $run->error_message);
 
         File::deleteDirectory($root);
@@ -92,7 +92,7 @@ class ScriptJobTest extends TestCase
     public function test_interrupted_job_closes_its_open_run(): void
     {
         $job = BackupJob::create([
-            'name' => 'proyecto-sync', 'type' => 'script', 'target_id' => $this->target()->id,
+            'name' => 'backup-sync', 'type' => 'script', 'target_id' => $this->target()->id,
             'command' => 'true', 'schedule_cron' => '* * * * *', 'enabled' => true,
         ]);
         BackupJobRun::create(['backup_job_id' => $job->id, 'status' => 'running', 'started_at' => now()->subMinutes(5)]);
